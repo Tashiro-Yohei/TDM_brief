@@ -28,15 +28,6 @@ st.markdown("""
         letter-spacing: 1px;
         padding-bottom: 10px;
     }
-    
-    /* 中見出し（H2）のクリーンな装飾 */
-    h2 {
-        color: #1A365D;
-        font-weight: 700;
-        border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 10px;
-        margin-top: 20px;
-    }
 
     /* ボタンのモダン化 */
     div.stButton > button:first-child {
@@ -68,11 +59,6 @@ st.markdown("""
         box-shadow: 0 0 0 2px rgba(38, 208, 206, 0.2);
     }
 
-    /* Streamlit要素非表示 */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
     /* 左カラムパネル風 */
     [data-testid="column"]:nth-of-type(1) {
         background-color: #F8FAFC;
@@ -80,17 +66,66 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
     }
+    
+    /* =========================================
+       📄 プレビュー画面（Markdown出力）のスタイリング
+       ========================================= */
+    /* H1（大見出し） */
+    [data-testid="stMarkdownContainer"] h1 {
+        font-size: 1.8rem;
+        color: #1A365D;
+        border-bottom: 3px solid #26D0CE;
+        padding-bottom: 0.5rem;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    /* H2（中見出し） */
+    [data-testid="stMarkdownContainer"] h2 {
+        font-size: 1.3rem;
+        color: #1A365D;
+        background-color: #F8FAFC;
+        border-left: 6px solid #1A2980;
+        padding: 0.8rem 1rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        border-radius: 0 4px 4px 0;
+    }
+    /* H3（小見出し） */
+    [data-testid="stMarkdownContainer"] h3 {
+        font-size: 1.1rem;
+        color: #2B6CB0;
+        border-bottom: 1px dashed #CBD5E1;
+        padding-bottom: 0.3rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    /* 強調（太字） */
+    [data-testid="stMarkdownContainer"] strong {
+        color: #1A2980;
+        background: linear-gradient(transparent 70%, #E0F2FE 0%);
+    }
+    /* 箇条書きとテキスト */
+    [data-testid="stMarkdownContainer"] ul, [data-testid="stMarkdownContainer"] ol {
+        margin-bottom: 1.5rem;
+    }
+    [data-testid="stMarkdownContainer"] li {
+        margin-bottom: 0.5rem;
+        line-height: 1.7;
+        color: #334155;
+    }
+    [data-testid="stMarkdownContainer"] p {
+        line-height: 1.7;
+        color: #334155;
+    }
 </style>
 """, unsafe_allow_html=True)
 # ==========================================
 
 def generate_brief(api_key, product_name, product_url, uploaded_file):
-    """Gemini APIのマルチモーダル機能を利用してファイルを直接解析する"""
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash')
     
     file_ext = os.path.splitext(uploaded_file.name)[1].lower()
-    
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
         tmp_file.write(uploaded_file.getvalue())
         tmp_file_path = tmp_file.name
@@ -100,15 +135,18 @@ def generate_brief(api_key, product_name, product_url, uploaded_file):
 
         prompt = f"""
         あなたは優秀なマーケターです。
-        添付した「トークギャップ診断結果ファイル（画像・テキスト含む）」と、以下の「商品情報」をもとに、トークデザインマーケティングの実行要件定義書（ブリーフ）を作成してください。
+        添付した「トークギャップ診断結果ファイル（画像・テキスト含む）」と、以下の「商品情報」をもとに、トークデザインマーケティングの「実行要件定義書（オリエンテーション用ブリーフ）」を作成してください。
 
         【商品情報】
         ・商品名: {product_name}
         ・商品URL: {product_url if product_url else '（指定なし）'}
 
+        【重要な指示】
+        この資料は「具体的なキャンペーン施策（クリエイティブ案や具体的なハッシュタグなど）」を提案するものではありません。
+        代理店やクリエイターに対して「具体的なキャンペーンを企画・提案してもらうため」の【要件（ガイドライン、方向性、満たすべき条件）】を定義する資料です。具体的なアイデアを出しすぎず、企画の「枠組み」や「狙い」を提示してください。
+
         【出力要件】
         以下の構成に従い、Markdown形式で出力してください。
-        添付ファイルから画像内の文字情報や傾向も読み取り、具体的なマーケティング戦略として昇華させてください。
         読者が理解しやすいよう、適宜「箇条書き」や「太字（**文字**）」を活用してメリハリをつけてください。
 
         # トークデザイン・プロジェクト 実行要件定義書
@@ -117,23 +155,28 @@ def generate_brief(api_key, product_name, product_url, uploaded_file):
         （市場・ブランドの現状、コミュニケーションのゴール）
 
         ## 2. ターゲット・インサイト
-        （コアターゲット、ターゲットの「会話」の現状）
+        （コアターゲット、ターゲットの「会話」の現状と変化の兆し）
 
         ## 3. トークギャップ診断結果（前提課題）
-        （自社の発信内容、SNSでの発信内容、生成AIの言及内容、ギャップの核心を整理）
+        （自社の発信内容、SNSでの発信内容、生成AIの言及内容、解決すべきギャップの核心を整理）
 
-        ## 4. コア戦略：トークデザイン要件
-        （トーク・フック、トーク・コンテキスト、トーク・アセット、トーク・サーキュレーションの4要素の具体案）
+        ## 4. コア戦略：トークデザイン要件（企画の方向性）
+        ※具体的な企画案ではなく、「どのような企画を提案してほしいか」という要件を定義してください。
+        * **トーク・フックの要件**: ターゲットが思わず反応・発話してしまうための「きっかけ」として必要な要素や条件
+        * **トーク・コンテキストの要件**: 文脈や世の中の関心事と、ブランドをどう接続すべきかの方向性
+        * **トーク・アセットの要件**: 会話を活性化させるために「どのような種類のコンテンツやツール（動画、体験、データなど）」が必要かの指針
+        * **トーク・サーキュレーションの要件**: 情報が波及・循環していくための導線設計で満たすべき条件
 
-        ## 5. 実行戦術のプランニング要件
-        （全体戦術方針、コミュニケーション戦術、メディア・チャネル戦術、話題の増幅・連鎖の仕組み。※生成AIへの言及を促す視点を必ず入れること）
+        ## 5. 実行戦術のプランニング要件（施策立案のガイドライン）
+        ※具体的な戦術ではなく、プランニングする上での指針を記載してください。
+        （全体戦術方針、コミュニケーション戦術の方向性、メディア・チャネル選定の条件、話題の増幅・連鎖の仕組みの要件。※生成AIへの言及を促す視点を必ず考慮条件に含めること）
 
         ---
         ## 【別AIインプット用】WHO / WHAT / HOW 整理
-        このプロジェクトを別のAIに引き継ぐための要件整理として、以下の項目を具体的に記述してください。
-        * **WHO**：ペルソナ設計／インサイト抽出／カスタマージャーニー分析
-        * **WHAT**：ポジショニング／POD（Point of Difference）／プロポジション設計
-        * **HOW**：IMCテーマ策定／施策立案／KPI設計／予算配分の考え方
+        このプロジェクトを別のAI（企画立案用AI）に引き継ぐための要件整理として、以下の項目を記述してください。
+        * **WHO**：ペルソナ像の定義／狙うべきインサイト／カスタマージャーニーの着眼点
+        * **WHAT**：ブランドのポジショニング／POD（Point of Difference）／提案すべきプロポジション
+        * **HOW**：IMCテーマの方向性／施策の評価基準／KPI設計の考え方／予算配分の考え方（※具体的な施策案ではなく、企画時のガイドライン）
         """
         
         response = model.generate_content([prompt, uploaded_gemini_file])
@@ -147,7 +190,6 @@ def generate_brief(api_key, product_name, product_url, uploaded_file):
             os.remove(tmp_file_path)
 
 def create_pdf(markdown_text):
-    """MarkdownをHTML経由でPDFに変換する（スタイリッシュデザイン版）"""
     html_body = markdown.markdown(markdown_text, extensions=['tables'])
     
     html_content = f"""
@@ -156,13 +198,11 @@ def create_pdf(markdown_text):
     <head>
         <meta charset="UTF-8">
         <style>
-            /* Google Fontsから日本語フォントを読み込む */
             @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
             
             @page {{
                 size: A4;
                 margin: 25mm 20mm;
-                /* 右下にページ番号を追加 */
                 @bottom-right {{
                     content: counter(page);
                     font-family: 'Noto Sans JP', sans-serif;
@@ -173,106 +213,25 @@ def create_pdf(markdown_text):
             
             body {{
                 font-family: 'Noto Sans JP', sans-serif;
-                color: #334155; /* 視認性の高いダークグレー */
-                line-height: 1.8; /* 行間を広げて読みやすく */
+                color: #334155;
+                line-height: 1.8;
                 font-size: 10.5pt;
                 word-wrap: break-word;
             }}
             
-            /* 大見出し：ドキュメントタイトル */
-            h1 {{ 
-                font-size: 20pt; 
-                color: #1A365D; 
-                text-align: center;
-                border-bottom: 3px solid #26D0CE; 
-                padding-bottom: 12px; 
-                margin-bottom: 35px;
-                font-weight: 700; 
-            }}
-            
-            /* 中見出し：セクションの区切り */
-            h2 {{ 
-                font-size: 14pt; 
-                color: #1A365D; 
-                background-color: #F8FAFC;
-                border-left: 6px solid #1A2980; 
-                padding: 10px 15px; 
-                margin-top: 40px; 
-                margin-bottom: 20px;
-                font-weight: 700;
-                page-break-after: avoid; /* 見出しの直後で改ページさせない */
-            }}
-            
-            /* 小見出し */
-            h3 {{ 
-                font-size: 12pt; 
-                color: #2B6CB0; 
-                border-bottom: 1px dashed #CBD5E1;
-                padding-bottom: 6px;
-                margin-top: 25px;
-                margin-bottom: 15px;
-                font-weight: 700; 
-                page-break-after: avoid;
-            }}
-            
-            p {{
-                margin-bottom: 15px;
-                text-align: justify;
-            }}
-            
-            /* リスト（箇条書き）のデザイン調整 */
-            ul, ol {{
-                margin-top: 5px;
-                margin-bottom: 20px;
-                padding-left: 25px;
-            }}
-            li {{
-                margin-bottom: 8px;
-            }}
-            
-            /* 強調文字をネイビーにして目立たせる */
-            strong {{
-                color: #1A2980;
-                font-weight: 700;
-            }}
-            
-            /* テーブルのデザイン */
-            table {{ 
-                border-collapse: collapse; 
-                width: 100%; 
-                margin-top: 15px;
-                margin-bottom: 25px;
-                page-break-inside: avoid;
-            }}
-            th, td {{ 
-                border: 1px solid #E2E8F0; 
-                padding: 12px; 
-                text-align: left; 
-            }}
-            th {{ 
-                background-color: #1A365D; 
-                color: white;
-                font-weight: 500;
-            }}
-            tr:nth-child(even) {{
-                background-color: #F8FAFC;
-            }}
-            
-            /* 区切り線 */
-            hr {{ 
-                border: none; 
-                border-top: 2px solid #E2E8F0; 
-                margin: 40px 0; 
-            }}
-            
-            /* 引用・注釈ブロック */
-            blockquote {{
-                border-left: 4px solid #26D0CE;
-                background-color: #F0FDFA;
-                margin: 15px 0;
-                padding: 12px 15px;
-                color: #0F766E;
-            }}
+            h1 {{ font-size: 20pt; color: #1A365D; text-align: center; border-bottom: 3px solid #26D0CE; padding-bottom: 12px; margin-bottom: 35px; font-weight: 700; }}
+            h2 {{ font-size: 14pt; color: #1A365D; background-color: #F8FAFC; border-left: 6px solid #1A2980; padding: 10px 15px; margin-top: 40px; margin-bottom: 20px; font-weight: 700; page-break-after: avoid; }}
+            h3 {{ font-size: 12pt; color: #2B6CB0; border-bottom: 1px dashed #CBD5E1; padding-bottom: 6px; margin-top: 25px; margin-bottom: 15px; font-weight: 700; page-break-after: avoid; }}
+            p {{ margin-bottom: 15px; text-align: justify; }}
+            ul, ol {{ margin-top: 5px; margin-bottom: 20px; padding-left: 25px; }}
+            li {{ margin-bottom: 8px; }}
+            strong {{ color: #1A2980; font-weight: 700; background: linear-gradient(transparent 70%, #E0F2FE 0%); }}
+            table {{ border-collapse: collapse; width: 100%; margin-top: 15px; margin-bottom: 25px; page-break-inside: avoid; }}
+            th, td {{ border: 1px solid #E2E8F0; padding: 12px; text-align: left; }}
+            th {{ background-color: #1A365D; color: white; font-weight: 500; }}
+            tr:nth-child(even) {{ background-color: #F8FAFC; }}
+            hr {{ border: none; border-top: 2px solid #E2E8F0; margin: 40px 0; }}
+            blockquote {{ border-left: 4px solid #26D0CE; background-color: #F0FDFA; margin: 15px 0; padding: 12px 15px; color: #0F766E; }}
         </style>
     </head>
     <body>
