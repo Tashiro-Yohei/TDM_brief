@@ -85,7 +85,6 @@ st.markdown("""
 def generate_brief(api_key, product_name, product_url, gap_info):
     """Gemini APIを呼び出してブリーフを生成する"""
     genai.configure(api_key=api_key)
-    # 変更点: モデルを gemini-2.5-flash に変更
     model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = f"""
@@ -189,10 +188,11 @@ with col_left:
     product_url = st.text_input("🔗 商品URL（任意）", placeholder="https://...")
     
     st.markdown("<br>", unsafe_allow_html=True)
+    # type指定を削除し、どんな形式のファイルでもアップロード可能に変更
     uploaded_file = st.file_uploader(
         "📊 トークギャップ診断結果 (Upload)", 
-        type=["txt", "csv", "md"],
-        help="UTF-8エンコードのテキスト、CSV、Markdown形式のファイル"
+        type=None,
+        help="診断結果のファイルをアップロードしてください（※テキストとして読み取れるファイルを推奨します）"
     )
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -209,10 +209,18 @@ with col_right:
     if generate_btn:
         gap_info = None
         if uploaded_file is not None:
-            try:
-                gap_info = uploaded_file.getvalue().decode("utf-8")
-            except Exception as e:
-                st.error("ファイルの読み込みに失敗しました。UTF-8形式で保存されたファイルを使用してください。")
+            file_bytes = uploaded_file.getvalue()
+            # 複数の文字コードで読み込みを順番に試す（Windows環境等への対応）
+            encodings = ["utf-8", "shift_jis", "cp932", "euc_jp"]
+            for enc in encodings:
+                try:
+                    gap_info = file_bytes.decode(enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            
+            if gap_info is None:
+                st.error("ファイルの読み取りに失敗しました。PDFや画像などではなく、テキストとして情報を抽出できるファイルをご使用ください。")
                 
         if not api_key:
             st.warning("API Keyを入力してください。")
@@ -221,7 +229,8 @@ with col_right:
         elif uploaded_file is None:
             st.warning("トークギャップ診断結果のファイルをアップロードしてください。")
         elif gap_info is None:
-            st.error("ファイルの内容を正しく取得できませんでした。")
+            # デコードエラー時の警告は上で出しているためパス
+            pass
         else:
             with st.spinner("🧠 Gemini 2.5 Flashがブリーフを策定中... (数十秒かかる場合があります)"):
                 try:
