@@ -4,3 +4,5 @@ markdown
 weasyprint
 cffi
 pillow
+pypdf
+python-pptx
