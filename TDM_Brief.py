@@ -85,7 +85,8 @@ st.markdown("""
 def generate_brief(api_key, product_name, product_url, gap_info):
     """Gemini APIを呼び出してブリーフを生成する"""
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    # 変更点: モデルを gemini-2.5-flash に変更
+    model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = f"""
     あなたは優秀なマーケターです。
@@ -222,7 +223,7 @@ with col_right:
         elif gap_info is None:
             st.error("ファイルの内容を正しく取得できませんでした。")
         else:
-            with st.spinner("🧠 Geminiがブリーフを策定中... (数十秒かかる場合があります)"):
+            with st.spinner("🧠 Gemini 2.5 Flashがブリーフを策定中... (数十秒かかる場合があります)"):
                 try:
                     result = generate_brief(api_key, product_name, product_url, gap_info)
                     st.session_state.brief_content = result
