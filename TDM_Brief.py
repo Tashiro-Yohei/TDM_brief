@@ -109,6 +109,7 @@ def generate_brief(api_key, product_name, product_url, uploaded_file):
         【出力要件】
         以下の構成に従い、Markdown形式で出力してください。
         添付ファイルから画像内の文字情報や傾向も読み取り、具体的なマーケティング戦略として昇華させてください。
+        読者が理解しやすいよう、適宜「箇条書き」や「太字（**文字**）」を活用してメリハリをつけてください。
 
         # トークデザイン・プロジェクト 実行要件定義書
 
@@ -146,7 +147,7 @@ def generate_brief(api_key, product_name, product_url, uploaded_file):
             os.remove(tmp_file_path)
 
 def create_pdf(markdown_text):
-    """MarkdownをHTML経由でPDFに変換する"""
+    """MarkdownをHTML経由でPDFに変換する（スタイリッシュデザイン版）"""
     html_body = markdown.markdown(markdown_text, extensions=['tables'])
     
     html_content = f"""
@@ -155,23 +156,123 @@ def create_pdf(markdown_text):
     <head>
         <meta charset="UTF-8">
         <style>
+            /* Google Fontsから日本語フォントを読み込む */
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+            
             @page {{
                 size: A4;
-                margin: 20mm;
+                margin: 25mm 20mm;
+                /* 右下にページ番号を追加 */
+                @bottom-right {{
+                    content: counter(page);
+                    font-family: 'Noto Sans JP', sans-serif;
+                    font-size: 9pt;
+                    color: #64748b;
+                }}
             }}
+            
             body {{
-                font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
-                color: #333;
-                line-height: 1.6;
+                font-family: 'Noto Sans JP', sans-serif;
+                color: #334155; /* 視認性の高いダークグレー */
+                line-height: 1.8; /* 行間を広げて読みやすく */
                 font-size: 10.5pt;
+                word-wrap: break-word;
             }}
-            h1 {{ font-size: 18pt; color: #1A365D; border-bottom: 2px solid #1A365D; padding-bottom: 5px; }}
-            h2 {{ font-size: 14pt; color: #1A365D; border-left: 5px solid #1A365D; padding-left: 10px; margin-top: 30px; }}
-            h3 {{ font-size: 12pt; color: #2B6CB0; }}
-            table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; }}
-            th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
-            th {{ background-color: #f0f4f8; }}
-            hr {{ border: none; border-top: 2px dashed #ccc; margin: 30px 0; }}
+            
+            /* 大見出し：ドキュメントタイトル */
+            h1 {{ 
+                font-size: 20pt; 
+                color: #1A365D; 
+                text-align: center;
+                border-bottom: 3px solid #26D0CE; 
+                padding-bottom: 12px; 
+                margin-bottom: 35px;
+                font-weight: 700; 
+            }}
+            
+            /* 中見出し：セクションの区切り */
+            h2 {{ 
+                font-size: 14pt; 
+                color: #1A365D; 
+                background-color: #F8FAFC;
+                border-left: 6px solid #1A2980; 
+                padding: 10px 15px; 
+                margin-top: 40px; 
+                margin-bottom: 20px;
+                font-weight: 700;
+                page-break-after: avoid; /* 見出しの直後で改ページさせない */
+            }}
+            
+            /* 小見出し */
+            h3 {{ 
+                font-size: 12pt; 
+                color: #2B6CB0; 
+                border-bottom: 1px dashed #CBD5E1;
+                padding-bottom: 6px;
+                margin-top: 25px;
+                margin-bottom: 15px;
+                font-weight: 700; 
+                page-break-after: avoid;
+            }}
+            
+            p {{
+                margin-bottom: 15px;
+                text-align: justify;
+            }}
+            
+            /* リスト（箇条書き）のデザイン調整 */
+            ul, ol {{
+                margin-top: 5px;
+                margin-bottom: 20px;
+                padding-left: 25px;
+            }}
+            li {{
+                margin-bottom: 8px;
+            }}
+            
+            /* 強調文字をネイビーにして目立たせる */
+            strong {{
+                color: #1A2980;
+                font-weight: 700;
+            }}
+            
+            /* テーブルのデザイン */
+            table {{ 
+                border-collapse: collapse; 
+                width: 100%; 
+                margin-top: 15px;
+                margin-bottom: 25px;
+                page-break-inside: avoid;
+            }}
+            th, td {{ 
+                border: 1px solid #E2E8F0; 
+                padding: 12px; 
+                text-align: left; 
+            }}
+            th {{ 
+                background-color: #1A365D; 
+                color: white;
+                font-weight: 500;
+            }}
+            tr:nth-child(even) {{
+                background-color: #F8FAFC;
+            }}
+            
+            /* 区切り線 */
+            hr {{ 
+                border: none; 
+                border-top: 2px solid #E2E8F0; 
+                margin: 40px 0; 
+            }}
+            
+            /* 引用・注釈ブロック */
+            blockquote {{
+                border-left: 4px solid #26D0CE;
+                background-color: #F0FDFA;
+                margin: 15px 0;
+                padding: 12px 15px;
+                color: #0F766E;
+            }}
         </style>
     </head>
     <body>
@@ -204,14 +305,12 @@ with col_left:
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # パワポはPDFでのアップロードを推奨する文言を強調
     uploaded_file = st.file_uploader(
         "📊 トークギャップ診断結果 (Upload)", 
         type=["pdf", "csv", "txt", "png", "jpg", "jpeg", "md"],
         help="【推奨】PowerPoint資料は、スライド内の画像やグラフの文字も含めてAIに正確に読み取らせるため、必ず「PDFファイル」として保存（エクスポート）してからアップロードしてください。"
     )
     
-    # 補足のアドバイス表示
     st.info("💡 **PowerPointをご利用の方へ**\n\nパワポ(.pptx)のままではなく、**「PDFとして保存」**したファイルをアップロードしていただくことで、スライド内の図解やテキストをAIが残さず読み取れるようになります。")
     
     st.markdown("<br>", unsafe_allow_html=True)
