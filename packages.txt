@@ -3,3 +3,4 @@ libpango1.0-dev
 libgdk-pixbuf-2.0-dev
 libffi-dev
 shared-mime-info
+fonts-noto-cjk
