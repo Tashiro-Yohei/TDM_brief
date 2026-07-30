@@ -3,6 +3,8 @@ import google.generativeai as genai
 import markdown
 from weasyprint import HTML
 import io
+import tempfile
+import os
 
 # ページ設定（ワイドレイアウトとタイトル）
 st.set_page_config(page_title="Talk Design Brief Generator", layout="wide")
@@ -36,7 +38,7 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* ボタンのモダン化（グラデーション、シャドウ、ホバーエフェクト） */
+    /* ボタンのモダン化 */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #1A2980 0%, #26D0CE 100%);
         color: white;
@@ -55,7 +57,7 @@ st.markdown("""
         color: white;
     }
 
-    /* インプットエリアのフォーカス時のGlowエフェクト */
+    /* インプットエリア */
     .stTextInput input {
         border-radius: 6px;
         border: 1px solid #CBD5E1;
@@ -66,12 +68,12 @@ st.markdown("""
         box-shadow: 0 0 0 2px rgba(38, 208, 206, 0.2);
     }
 
-    /* Streamlitのデフォルト要素を非表示にしてアプリ感を強める */
+    /* Streamlit要素非表示 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* 左カラムの背景を少し変えてパネル風にする（任意） */
+    /* 左カラムパネル風 */
     [data-testid="column"]:nth-of-type(1) {
         background-color: #F8FAFC;
         padding: 20px;
@@ -82,52 +84,66 @@ st.markdown("""
 """, unsafe_allow_html=True)
 # ==========================================
 
-def generate_brief(api_key, product_name, product_url, gap_info):
-    """Gemini APIを呼び出してブリーフを生成する"""
+def generate_brief(api_key, product_name, product_url, uploaded_file):
+    """Gemini APIのマルチモーダル機能を利用してファイルを直接解析する"""
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash')
     
-    prompt = f"""
-    あなたは優秀なマーケターです。
-    以下の「商品情報」と「トークギャップ診断結果」をもとに、トークデザインマーケティングの実行要件定義書（ブリーフ）を作成してください。
-
-    【入力情報】
-    ・商品名: {product_name}
-    ・商品URL: {product_url if product_url else '（指定なし）'}
-    ・トークギャップ診断結果ファイルの内容:
-    {gap_info}
-
-    【出力要件】
-    以下の構成に従い、Markdown形式で出力してください。
-    出力する内容は、上記の入力情報を分析し、具体的なマーケティング戦略として昇華させたものにしてください。
-
-    # トークデザイン・プロジェクト 実行要件定義書
-
-    ## 1. プロジェクト背景と目的
-    （市場・ブランドの現状、コミュニケーションのゴール）
-
-    ## 2. ターゲット・インサイト
-    （コアターゲット、ターゲットの「会話」の現状）
-
-    ## 3. トークギャップ診断結果（前提課題）
-    （自社の発信内容、SNSでの発信内容、生成AIの言及内容、ギャップの核心を整理）
-
-    ## 4. コア戦略：トークデザイン要件
-    （トーク・フック、トーク・コンテキスト、トーク・アセット、トーク・サーキュレーションの4要素の具体案）
-
-    ## 5. 実行戦術のプランニング要件
-    （全体戦術方針、コミュニケーション戦術、メディア・チャネル戦術、話題の増幅・連鎖の仕組み。※生成AIへの言及を促す視点を必ず入れること）
-
-    ---
-    ## 【別AIインプット用】WHO / WHAT / HOW 整理
-    このプロジェクトを別のAIに引き継ぐための要件整理として、以下の項目を具体的に記述してください。
-    * **WHO**：ペルソナ設計／インサイト抽出／カスタマージャーニー分析
-    * **WHAT**：ポジショニング／POD（Point of Difference）／プロポジション設計
-    * **HOW**：IMCテーマ策定／施策立案／KPI設計／予算配分の考え方
-    """
+    file_ext = os.path.splitext(uploaded_file.name)[1].lower()
     
-    response = model.generate_content(prompt)
-    return response.text
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        tmp_file_path = tmp_file.name
+
+    try:
+        uploaded_gemini_file = genai.upload_file(path=tmp_file_path)
+
+        prompt = f"""
+        あなたは優秀なマーケターです。
+        添付した「トークギャップ診断結果ファイル（画像・テキスト含む）」と、以下の「商品情報」をもとに、トークデザインマーケティングの実行要件定義書（ブリーフ）を作成してください。
+
+        【商品情報】
+        ・商品名: {product_name}
+        ・商品URL: {product_url if product_url else '（指定なし）'}
+
+        【出力要件】
+        以下の構成に従い、Markdown形式で出力してください。
+        添付ファイルから画像内の文字情報や傾向も読み取り、具体的なマーケティング戦略として昇華させてください。
+
+        # トークデザイン・プロジェクト 実行要件定義書
+
+        ## 1. プロジェクト背景と目的
+        （市場・ブランドの現状、コミュニケーションのゴール）
+
+        ## 2. ターゲット・インサイト
+        （コアターゲット、ターゲットの「会話」の現状）
+
+        ## 3. トークギャップ診断結果（前提課題）
+        （自社の発信内容、SNSでの発信内容、生成AIの言及内容、ギャップの核心を整理）
+
+        ## 4. コア戦略：トークデザイン要件
+        （トーク・フック、トーク・コンテキスト、トーク・アセット、トーク・サーキュレーションの4要素の具体案）
+
+        ## 5. 実行戦術のプランニング要件
+        （全体戦術方針、コミュニケーション戦術、メディア・チャネル戦術、話題の増幅・連鎖の仕組み。※生成AIへの言及を促す視点を必ず入れること）
+
+        ---
+        ## 【別AIインプット用】WHO / WHAT / HOW 整理
+        このプロジェクトを別のAIに引き継ぐための要件整理として、以下の項目を具体的に記述してください。
+        * **WHO**：ペルソナ設計／インサイト抽出／カスタマージャーニー分析
+        * **WHAT**：ポジショニング／POD（Point of Difference）／プロポジション設計
+        * **HOW**：IMCテーマ策定／施策立案／KPI設計／予算配分の考え方
+        """
+        
+        response = model.generate_content([prompt, uploaded_gemini_file])
+        result_text = response.text
+        
+        genai.delete_file(uploaded_gemini_file.name)
+        return result_text
+
+    finally:
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
 
 def create_pdf(markdown_text):
     """MarkdownをHTML経由でPDFに変換する"""
@@ -175,7 +191,6 @@ def create_pdf(markdown_text):
 st.title("TALK DESIGN BRIEF GENERATOR")
 st.markdown("##### AI駆動型 トークデザイン要件定義書 自動生成システム")
 
-# 左カラム(インプット) 1 : 右カラム(アウトプット) 3 の比率
 col_left, col_right = st.columns([1, 3])
 
 with col_left:
@@ -188,12 +203,16 @@ with col_left:
     product_url = st.text_input("🔗 商品URL（任意）", placeholder="https://...")
     
     st.markdown("<br>", unsafe_allow_html=True)
-    # type指定を削除し、どんな形式のファイルでもアップロード可能に変更
+    
+    # パワポはPDFでのアップロードを推奨する文言を強調
     uploaded_file = st.file_uploader(
         "📊 トークギャップ診断結果 (Upload)", 
-        type=None,
-        help="診断結果のファイルをアップロードしてください（※テキストとして読み取れるファイルを推奨します）"
+        type=["pdf", "csv", "txt", "png", "jpg", "jpeg", "md"],
+        help="【推奨】PowerPoint資料は、スライド内の画像やグラフの文字も含めてAIに正確に読み取らせるため、必ず「PDFファイル」として保存（エクスポート）してからアップロードしてください。"
     )
+    
+    # 補足のアドバイス表示
+    st.info("💡 **PowerPointをご利用の方へ**\n\nパワポ(.pptx)のままではなく、**「PDFとして保存」**したファイルをアップロードしていただくことで、スライド内の図解やテキストをAIが残さず読み取れるようになります。")
     
     st.markdown("<br>", unsafe_allow_html=True)
     generate_btn = st.button("🚀 ブリーフを生成する", type="primary", use_container_width=True)
@@ -201,53 +220,31 @@ with col_left:
 with col_right:
     st.markdown("### 📄 Output (ブリーフプレビュー)")
     
-    # セッションステートの初期化
     if 'brief_content' not in st.session_state:
         st.session_state.brief_content = ""
         st.info("👈 左側のパネルに要件を入力し、「ブリーフを生成する」ボタンを押してください。")
         
     if generate_btn:
-        gap_info = None
-        if uploaded_file is not None:
-            file_bytes = uploaded_file.getvalue()
-            # 複数の文字コードで読み込みを順番に試す（Windows環境等への対応）
-            encodings = ["utf-8", "shift_jis", "cp932", "euc_jp"]
-            for enc in encodings:
-                try:
-                    gap_info = file_bytes.decode(enc)
-                    break
-                except UnicodeDecodeError:
-                    continue
-            
-            if gap_info is None:
-                st.error("ファイルの読み取りに失敗しました。PDFや画像などではなく、テキストとして情報を抽出できるファイルをご使用ください。")
-                
         if not api_key:
             st.warning("API Keyを入力してください。")
         elif not product_name:
             st.warning("商品名を入力してください。")
         elif uploaded_file is None:
             st.warning("トークギャップ診断結果のファイルをアップロードしてください。")
-        elif gap_info is None:
-            # デコードエラー時の警告は上で出しているためパス
-            pass
         else:
-            with st.spinner("🧠 Gemini 2.5 Flashがブリーフを策定中... (数十秒かかる場合があります)"):
+            with st.spinner("🧠 Gemini 2.5 Flashがファイルを直接「視覚・言語」で解析し、ブリーフを策定中... (最大1分ほどかかります)"):
                 try:
-                    result = generate_brief(api_key, product_name, product_url, gap_info)
+                    result = generate_brief(api_key, product_name, product_url, uploaded_file)
                     st.session_state.brief_content = result
                 except Exception as e:
-                    st.error(f"エラーが発生しました: {e}")
+                    st.error(f"エラーが発生しました: {e}\n\n※APIキーが間違っていないか、または非対応のファイル形式でないかご確認ください。")
 
-    # 生成されたコンテンツがある場合
     if st.session_state.brief_content:
-        # プレビュー表示
         with st.container():
             st.markdown(st.session_state.brief_content)
         
         st.divider()
         
-        # PDF生成＆ダウンロード
         with st.spinner("📄 PDFをレンダリング中..."):
             pdf_file = create_pdf(st.session_state.brief_content)
             
